@@ -12,6 +12,9 @@ defmodule AshAuthentication.AddOn.AuditLog.Transformer do
   @doc false
   @impl true
   def after?(AshAuthentication.Strategy.Custom.Transformer), do: true
+  # `include_actions: [:*]` is expanded from the resource's actions, which only
+  # include those declared with `defaults` once this transformer has run.
+  def after?(Ash.Resource.Transformers.SetPrimaryActions), do: true
   def after?(_), do: false
 
   @doc false
