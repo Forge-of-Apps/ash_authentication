@@ -104,7 +104,7 @@ defmodule AshAuthentication.Utils do
   """
   @spec maybe_build_action(Dsl.t(), atom, (map -> map)) :: {:ok, atom | map} | {:error, any}
   def maybe_build_action(dsl_state, action_name, builder) when is_function(builder, 1) do
-    if Resource.Info.action(dsl_state, action_name) || default_action?(dsl_state, action_name) do
+    if Resource.Info.action(dsl_state, action_name) || default_entry(dsl_state, action_name) do
       {:ok, dsl_state}
     else
       with {:ok, action} <- builder.(dsl_state) do
@@ -118,26 +118,38 @@ defmodule AshAuthentication.Utils do
   """
   @spec default_action(Dsl.t(), atom) :: Resource.Actions.action() | nil
   def default_action(dsl_state, action_name) do
-    if action_name in ~w[create read update destroy]a and default_action?(dsl_state, action_name) do
+    entry = default_entry(dsl_state, action_name)
+
+    if entry && action_name in ~w[create read update destroy]a do
       primary? =
         not Enum.any?(Resource.Info.actions(dsl_state), &(&1.type == action_name && &1.primary?))
 
-      Transformer.build_entity!(Resource.Dsl, [:actions], action_name,
-        name: action_name,
-        primary?: primary?
+      Transformer.build_entity!(
+        Resource.Dsl,
+        [:actions],
+        action_name,
+        [name: action_name, primary?: primary?] ++ default_accept(dsl_state, entry)
       )
     end
   end
 
-  defp default_action?(dsl_state, action_name) do
+  defp default_entry(dsl_state, action_name) do
     dsl_state
     |> Transformer.get_option([:actions], :defaults)
     |> List.wrap()
-    |> Enum.any?(fn
+    |> Enum.find(fn
       {name, _accept} -> name == action_name
       name -> name == action_name
     end)
   end
+
+  defp default_accept(_dsl_state, {type, accept}) when type in [:create, :update],
+    do: [accept: List.wrap(accept)]
+
+  defp default_accept(dsl_state, type) when type in [:create, :update],
+    do: [accept: List.wrap(Transformer.get_option(dsl_state, [:actions], :default_accept))]
+
+  defp default_accept(_dsl_state, _entry), do: []
 
   @doc """
   Used within transformers to optionally build attributes as needed.
