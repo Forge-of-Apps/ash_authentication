@@ -11,7 +11,7 @@ defmodule AshAuthentication.Validations.Action do
   alias Spark.Error.DslError
 
   @doc """
-  Validate that a named action actually exists, or that the resource's `defaults` declares it.
+  Validate that a named action actually exists.
   """
   @spec validate_action_exists(map, atom) ::
           {:ok, Actions.action()} | {:error, Exception.t() | String.t()}
