@@ -113,6 +113,31 @@ defmodule AshAuthentication.Utils do
     end
   end
 
+  @doc """
+  Builds the action named in the resource's `defaults`, the way `SetPrimaryActions` will expand it.
+  """
+  @spec default_action(Dsl.t(), atom) :: Resource.Actions.action() | nil
+  def default_action(dsl_state, action_name)
+      when action_name in ~w[create read update destroy]a do
+    with true <- default_action?(dsl_state, action_name),
+         primary? =
+           not Enum.any?(
+             Resource.Info.actions(dsl_state),
+             &(&1.type == action_name && &1.primary?)
+           ),
+         {:ok, action} <-
+           Transformer.build_entity(Resource.Dsl, [:actions], action_name,
+             name: action_name,
+             primary?: primary?
+           ) do
+      action
+    else
+      _ -> nil
+    end
+  end
+
+  def default_action(_dsl_state, _action_name), do: nil
+
   defp default_action?(dsl_state, action_name) do
     dsl_state
     |> Transformer.get_option([:actions], :defaults)
